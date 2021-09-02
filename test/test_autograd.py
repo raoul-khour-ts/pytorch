@@ -2020,6 +2020,36 @@ class TestAutograd(TestCase):
         gradcheck(func, [x])
         gradgradcheck(func, [x])
 
+    def test_select_scatter(self):
+        x = torch.randn(5, 5, dtype=torch.double, requires_grad=True)
+        v = torch.randn(5, dtype=torch.double, requires_grad=True)
+
+        def func(x, v):
+            return x.select_scatter(v, 0, 0).sum()
+
+        gradcheck(func, [x, v])
+        gradgradcheck(func, [x, v])
+
+    def test_slice_scatter(self):
+        x = torch.randn(5, 5, dtype=torch.double, requires_grad=True)
+        v = torch.randn(5, dtype=torch.double, requires_grad=True)
+
+        def func(x, v):
+            return x.slice_scatter(v, 0).sum()
+
+        gradcheck(func, [x, v])
+        gradgradcheck(func, [x, v])
+
+    def test_diagonal_scatter(self):
+        x = torch.randn(5, 5, dtype=torch.double, requires_grad=True)
+        v = torch.randn(5, dtype=torch.double, requires_grad=True)
+
+        def func(x, v):
+            return x.diagonal_scatter(v).sum()
+
+        gradcheck(func, [x, v])
+        gradgradcheck(func, [x, v])
+
     def test_diagonal_expanded_v(self):
         value = torch.rand([])
         v_expanded = torch.tensor(value).expand(10)
