@@ -131,6 +131,10 @@ struct cpu_scatter_gather_base_kernel {
 
     auto index_upper_bound = self_dim_size;
 
+    // since the index dimension is squashed, need to alter the grain size according
+    // to keep equal granularity in parallelism.
+    int64_t grain_size = std::max((int64_t) 1, at::internal::GRAIN_SIZE / index_dim_size);
+
     AT_DISPATCH_ALL_TYPES_AND_COMPLEX_AND3(
       ScalarType::Bool, ScalarType::Half, ScalarType::BFloat16, iter.dtype(),
       "scatter_gather_scalar_cpu", [&] {
@@ -181,7 +185,7 @@ struct cpu_scatter_gather_base_kernel {
             }
           }
         };
-        iter.for_each(loop);
+        iter.for_each(loop, grain_size);
       }
     );
   }
@@ -211,6 +215,8 @@ struct cpu_scatter_gather_base_kernel {
     auto src_dim_size = ensure_nonempty_size(src, dim);
 
     auto index_upper_bound = is_scatter_like ? self_dim_size : src_dim_size;
+
+    int64_t grain_size = std::max((int64_t) 1, at::internal::GRAIN_SIZE / index_dim_size);
 
     AT_DISPATCH_ALL_TYPES_AND_COMPLEX_AND3(
       ScalarType::Bool, ScalarType::Half, ScalarType::BFloat16, iter.dtype(),
@@ -268,7 +274,7 @@ struct cpu_scatter_gather_base_kernel {
             }
           }
         };
-        iter.for_each(loop);
+        iter.for_each(loop, grain_size);
       }
     );
   }
