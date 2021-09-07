@@ -1,3 +1,4 @@
+#include <typeinfo>
 #include <c10/util/variant.h>
 #include <torch/csrc/jit/tensorexpr/kernel.h>
 
@@ -1326,11 +1327,13 @@ Tensor computeConv2d(
     const std::vector<ArgValue>& inputs,
     const std::vector<ExprHandle>& outputShape,
     const c10::optional<ScalarType>& outputType) {
+  std::cout << "XXX " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
   Dtype dtype = kFloat;
   if (outputType) {
     dtype = Dtype(*outputType);
   }
 
+  std::cout << "XXX " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
   BufHandle ResultBuf("conv", outputShape, dtype);
   BufHandle inp = c10::get<BufHandle>(inputs[0]);
   BufHandle w = c10::get<BufHandle>(inputs[1]);
@@ -1352,6 +1355,7 @@ Tensor computeConv2d(
     return conv2d_depthwise(inp, w, b, strides[0], padding[0], groups);
   }
 
+  std::cout << "XXX " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
   // Once we have a performant TE representation for conv2d, we could use it
   // here instead of the external call!
   StmtPtr s = ExternalCall::make(
@@ -1365,6 +1369,7 @@ Tensor computeConv2d(
        dilation[0],
        dilation[1],
        groups});
+  std::cout << "XXX " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
   return Tensor(ResultBuf.node(), s);
 }
 
@@ -2510,8 +2515,10 @@ c10::optional<ScalarType> findDtypeForValue(const torch::jit::Value* v) {
 }
 
 Tensor TensorExprKernel::computeValue(const torch::jit::Value* v) {
+  std::cout << "XXX " << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
   auto inputs = v->node()->inputs();
   auto op = v->node()->kind();
+  std::cout << "XXX computeValue:" << v->debugName() << " output:" << v->node()->outputs()[0]->debugName() << " op.kind:" << op.toQualString() << std::endl;
 
   if (op == aten::rand_like) {
     hasRandom_ = true;
@@ -3091,18 +3098,23 @@ void TensorExprKernel::bindConstant(const torch::jit::Value* v) {
     // into immediates in TE IR
     return;
   }
+  std::cout << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << std::endl;
+  std::cout << "v:" << v->debugName() << std::endl;
   auto const_tensor = toIValue(v)->toTensor();
 
   const auto& tt = v->type()->expect<TensorType>();
   auto sizes = *tt->sizes().concrete_sizes();
+  std::cout << "concrete_sizes:" << sizes << std::endl;
   std::vector<ExprHandle> te_sizes;
   te_sizes.reserve(sizes.size());
   for (auto s : sizes) {
+    std::cout << "s.type:" << typeid(s).name() << std::endl;
     te_sizes.push_back(s);
   }
-
+  auto name_hint = "const_" + sanitizeName(v->debugName());
+  std::cout << __FILE__ << ":" << __LINE__ << " " << __FUNCTION__ << " name_hint:" << name_hint << std::endl;
   BufPtr buf = alloc<Buf>(
-      "const_" + sanitizeName(v->debugName()),
+      name_hint,
       ExprHandleVectorToExprVector(te_sizes),
       ToDtype(static_cast<ScalarType>(*tt->scalarType())));
 
@@ -3112,6 +3124,7 @@ void TensorExprKernel::bindConstant(const torch::jit::Value* v) {
   }
 
   constants_.push_back({buf, const_tensor.data_ptr()});
+  std::cout << "v:" << v->debugName() << " constants_.size():" << constants_.size() << std::endl;
   bufs_[v] = buf;
 }
 
